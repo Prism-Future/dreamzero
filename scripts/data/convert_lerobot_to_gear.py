@@ -136,8 +136,16 @@ def build_modality_json(
     state_mapping: dict[str, list[int]] | None,
     action_mapping: dict[str, list[int]] | None,
     task_key: str | None,
+    video_key_style: str = "full",
 ) -> dict:
-    """Build the modality.json structure expected by GEAR/DreamZero."""
+    """Build the modality.json structure expected by GEAR/DreamZero.
+
+    Args:
+        video_key_style: 'full' keeps the original LeRobot column name
+            (e.g. observation.images.cam_high) as the video original_key;
+            'short' uses the bare name (e.g. cam_high) to match datasets whose
+            video directories are named without the observation.images. prefix.
+    """
     features = detected["features"]
     modality: dict = {"state": {}, "action": {}, "video": {}, "annotation": {}}
 
@@ -200,7 +208,10 @@ def build_modality_json(
     # --- Video ---
     for vk in detected["video"]:
         short_name = vk.replace("observation.images.", "")
-        modality["video"][short_name] = {"original_key": vk}
+        if video_key_style == "short":
+            modality["video"][short_name] = {"original_key": short_name}
+        else:
+            modality["video"][short_name] = {"original_key": vk}
 
     # --- Annotation ---
     if task_key:
@@ -438,6 +449,11 @@ def main():
              "Each key must also exist in --state-keys. If omitted, skips relative stats."
     )
     parser.add_argument("--task-key", type=str, default=None, help="Column name for language annotations (auto-detected if not set)")
+    parser.add_argument("--video-key-style", type=str, default="full", choices=["full", "short"],
+                        help="Video original_key style in modality.json. 'full' keeps the LeRobot column "
+                             "name (observation.images.<cam>); 'short' uses the bare camera name (<cam>) "
+                             "for datasets whose videos/ directories are named without the prefix "
+                             "(default: full)")
     parser.add_argument("--fps", type=float, default=None, help="Override FPS (default: use dataset FPS from info.json)")
     parser.add_argument("--action-horizon", type=int, default=24, help="Action horizon for relative stats (default: 24)")
     parser.add_argument("--force", action="store_true", help="Overwrite existing GEAR metadata files")
@@ -483,6 +499,7 @@ def main():
     log.info("Dataset: %s", dataset_path.name)
     log.info("  Episodes: %d", info.get("total_episodes", 0))
     log.info("  FPS: %s", info.get("fps", "not set"))
+    log.info("  video_path: %s", info.get("video_path", "NOT SET (will fail at runtime)"))
     log.info("  State columns: %s", detected["state"])
     log.info("  Action columns: %s", detected["action"])
     log.info("  Video features: %d camera(s)", len(detected["video"]))
@@ -510,7 +527,10 @@ def main():
         log.info("  Auto-detected task key: %s", task_key)
 
     # 2. Build modality.json
-    modality = build_modality_json(info, detected, state_mapping, action_mapping, task_key)
+    modality = build_modality_json(
+        info, detected, state_mapping, action_mapping, task_key,
+        video_key_style=args.video_key_style,
+    )
 
     modality_path = meta_dir / "modality.json"
     if modality_path.exists() and not args.force:
