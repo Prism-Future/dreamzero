@@ -155,6 +155,11 @@ class EmbodimentTag(Enum):
 
     YAM = "yam"
 
+    STACK_CUPS = "stack_cups"
+    """
+    The stack_cups custom dataset.
+    """
+
     DREAM = "dream"
     """
     The datasets with DREAM actions.
