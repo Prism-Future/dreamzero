@@ -248,4 +248,60 @@ video_pred_output*/
 # trae
 .trae/
 
+# ============================================================
+# Local additions: machine-specific files and large artifacts
+# ============================================================
+
+# Inspire/SII platform metadata
+.sii/
+
+# Secrets and local environment variables
+.env
+.env.*
+!.env.example
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Hugging Face / Xet caches
+**/.cache/huggingface/
+.xet-cache/
+**/.xet-cache/
+
+# Large model/checkpoint files
+*.safetensors
+*.ckpt
+*.pth
+*.pt
+*.trt
+*.engine
+
+# Local logs
+*.log
+
+# Runtime and experiment outputs
+outputs/
+logs/
+runs/
+out/
+recordings/
+video_pred_output*/
+
+# Temporary files
+*.tmp
+*.temp
+*.part
+*.incomplete
+
+# OS/editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+debug_image/
+.ssh/
+
 debug_image/
