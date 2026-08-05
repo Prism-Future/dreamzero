@@ -247,3 +247,5 @@ video_pred_output*/
 
 # trae
 .trae/
+
+debug_image/
