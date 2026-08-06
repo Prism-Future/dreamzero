@@ -30,6 +30,9 @@ action_head_cfg:
       eps: 1e-6
       num_heads: 24
       num_layers: 30
+      max_state_dim: ${max_state_dim}
+      hidden_size: ${hidden_size}
+      action_dim: ${max_action_dim}
     vae_cfg:
       _target_: groot.vla.model.dreamzero.modules.wan_video_vae.WanVideoVAE38
       _convert_: object

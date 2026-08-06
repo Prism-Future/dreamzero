@@ -991,6 +991,77 @@ class LeRobotSingleDataset(Dataset):
                 )
         return step_filter
 
+    def _probe_video_native_resolution(
+        self, new_key: str, original_key: str, le_info: dict
+    ) -> tuple[int, int] | None:
+        """Probe the native (height, width) of a video feature by opening one mp4.
+
+        LeRobot v2 ``info.json`` may omit ``shape``/``names`` for video features, so the
+        resolution cannot be read from metadata. Instead we resolve an actual video file
+        for this key and read its first frame's dimensions with decord. The native
+        resolution is recorded as ``original_resolutions`` so ``VideoToTensor``/
+        ``VideoCrop`` validation passes; the downstream ``VideoResize`` then resizes to
+        the configured target (e.g. 160x320).
+
+        Returns (height, width) or None if probing fails.
+        """
+        try:
+            import decord
+        except Exception:
+            return None
+
+        dataset_path = self.dataset_path
+        videos_root = dataset_path / "videos"
+
+        # Candidate sub-keys for the {video_key} slot of the video_path pattern.
+        candidates: list[str] = []
+        for k in (new_key, original_key):
+            if not k:
+                continue
+            kk = k[len("video."):] if k.startswith("video.") else k
+            kk = kk[len("observation.images."):] if kk.startswith("observation.images.") else kk
+            if kk and kk not in candidates:
+                candidates.append(kk)
+
+        pattern = le_info.get("video_path")
+        try:
+            chunk_size = int(le_info.get("chunks_size", 1) or 1)
+        except (TypeError, ValueError):
+            chunk_size = 1
+        chunk_index = 0 // chunk_size  # episode 0
+
+        candidate_paths: list[Path] = []
+        for sub in candidates:
+            if pattern:
+                try:
+                    candidate_paths.append(
+                        dataset_path
+                        / pattern.format(
+                            episode_chunk=chunk_index, episode_index=0, video_key=sub
+                        )
+                    )
+                except Exception:
+                    pass
+            if videos_root.exists():
+                candidate_paths.extend(sorted(videos_root.rglob(f"*/{sub}/*.mp4")))
+                candidate_paths.extend(sorted(videos_root.rglob(f"{sub}*.mp4")))
+        # Fallback: any mp4 under videos/ (views usually share resolution).
+        if videos_root.exists():
+            candidate_paths.extend(sorted(videos_root.rglob("*.mp4")))
+
+        for p in candidate_paths:
+            try:
+                if not p.exists():
+                    continue
+                vr = decord.VideoReader(p.as_posix())
+                frame = vr[0]
+                h, w = int(frame.shape[0]), int(frame.shape[1])
+                if h > 0 and w > 0:
+                    return h, w
+            except Exception:
+                continue
+        return None
+
     def _get_metadata(self) -> DatasetMetadata:
         """Get the metadata for the dataset.
 
@@ -1034,16 +1105,45 @@ class LeRobotSingleDataset(Dataset):
             if original_key is None:
                 original_key = new_key
             le_video_meta = le_info["features"][original_key]
-            height = le_video_meta["shape"][le_video_meta["names"].index("height")]
-            width = le_video_meta["shape"][le_video_meta["names"].index("width")]
-            # NOTE(FH): different lerobot dataset versions have different keys for the number of channels and fps
+            # Resolve height/width/channel from shape+names (LeRobot v1) or fallback to video_info/info (v2)
+            shape_available = "shape" in le_video_meta and "names" in le_video_meta
+            if shape_available:
+                shape = le_video_meta["shape"]
+                names = le_video_meta["names"]
+                try:
+                    height = shape[names.index("height")]
+                except ValueError:
+                    height = shape[0] if len(shape) >= 1 else 160
+                try:
+                    width = shape[names.index("width")]
+                except ValueError:
+                    width = shape[1] if len(shape) >= 2 else 320
+                try:
+                    channels = shape[names.index("channel")]
+                except ValueError:
+                    try:
+                        channels = shape[names.index("channels")]
+                    except ValueError:
+                        channels = shape[2] if len(shape) >= 3 else 3
+            else:
+                # LeRobot v2 may omit shape/names for video features. Probe the actual
+                # video file for the native resolution so VideoToTensor/VideoCrop
+                # validation passes (VideoResize later resizes to the target).
+                channels = 3
+                probed = self._probe_video_native_resolution(new_key, original_key, le_info)
+                if probed is not None:
+                    height, width = probed
+                else:
+                    height = 160
+                    width = 320
+            # NOTE(FH): different lerobot dataset versions have different keys for fps
             try:
-                channels = le_video_meta["shape"][le_video_meta["names"].index("channel")]
                 fps = le_video_meta["video_info"]["video.fps"]
-            except (ValueError, KeyError):
-                # channels = le_video_meta["shape"][le_video_meta["names"].index("channels")]
-                channels = le_video_meta["info"]["video.channels"]
-                fps = le_video_meta["info"]["video.fps"]
+            except (KeyError, TypeError):
+                try:
+                    fps = le_video_meta["info"]["video.fps"]
+                except (KeyError, TypeError):
+                    fps = 30.0
             simplified_modality_meta["video"][new_key] = {
                 "resolution": [width, height],
                 "channels": channels,
@@ -1430,11 +1530,8 @@ class LeRobotSingleDataset(Dataset):
             Path: Path to the video file.
         """
         chunk_index = self.get_episode_chunk(trajectory_id)
-        original_key = self.lerobot_modality_meta.video[key].original_key
-        if original_key is None:
-            original_key = key
         video_filename = self.video_path_pattern.format(
-            episode_chunk=chunk_index, episode_index=trajectory_id, video_key=original_key
+            episode_chunk=chunk_index, episode_index=trajectory_id, video_key=key
         )
         return self.dataset_path / video_filename
 
