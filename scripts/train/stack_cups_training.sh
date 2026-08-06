@@ -20,6 +20,8 @@
 #   - Wan2.1-I2V-14B-480P weights (auto-downloaded or pre-downloaded from HuggingFace)
 #   - umt5-xxl tokenizer (auto-downloaded or pre-downloaded from HuggingFace)
 #   - DreamZero-AgiBot pretrained checkpoint (for loading LoRA weights before fine-tuning)
+#     Already downloaded to /inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf_dataset_have_mp4/checkpoint_agibot
+#     (override via PRETRAINED_MODEL_PATH)
 
 export HYDRA_FULL_ERROR=1
 
@@ -39,6 +41,9 @@ NUM_GPUS=${NUM_GPUS:-8}
 # Model weight paths (download from HuggingFace if not already present)
 WAN_CKPT_DIR=${WAN_CKPT_DIR:-"./checkpoints/Wan2.1-I2V-14B-480P"}
 TOKENIZER_DIR=${TOKENIZER_DIR:-"./checkpoints/umt5-xxl"}
+
+# Pretrained DreamZero-AgiBot checkpoint (for loading LoRA weights before fine-tuning)
+PRETRAINED_MODEL_PATH=${PRETRAINED_MODEL_PATH:-"/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf_dataset_have_mp4/checkpoint_agibot"}
 # =============================================
 
 # ============ AUTO-DOWNLOAD WEIGHTS ============
@@ -63,6 +68,13 @@ fi
 # Validate GEAR metadata was generated
 if [ ! -f "$STACK_CUPS_DATA_ROOT/meta/modality.json" ]; then
     echo "ERROR: meta/modality.json missing. Run convert_lerobot_to_gear.py first (see header)."
+    exit 1
+fi
+
+# Validate pretrained checkpoint exists
+if [ ! -f "$PRETRAINED_MODEL_PATH/model.safetensors.index.json" ]; then
+    echo "ERROR: pretrained checkpoint not found at $PRETRAINED_MODEL_PATH"
+    echo "Set PRETRAINED_MODEL_PATH to your DreamZero-AgiBot checkpoint (GEAR-Dreams/DreamZero-AgiBot)"
     exit 1
 fi
 
@@ -108,6 +120,6 @@ torchrun --nproc_per_node $NUM_GPUS --standalone groot/vla/experiment/experiment
     image_encoder_pretrained_path=$WAN_CKPT_DIR/models_clip_open-clip-xlm-roberta-large-vit-huge-14.pth \
     vae_pretrained_path=$WAN_CKPT_DIR/Wan2.1_VAE.pth \
     tokenizer_path=$TOKENIZER_DIR \
-    pretrained_model_path=./checkpoints/DreamZero-AgiBot \
+    pretrained_model_path=$PRETRAINED_MODEL_PATH \
     ++action_head_cfg.config.skip_component_loading=true \
     ++action_head_cfg.config.defer_lora_injection=true
