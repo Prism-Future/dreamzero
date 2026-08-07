@@ -74,6 +74,10 @@ action_head_cfg:
       num_frame_per_block: ${num_frame_per_block}
       num_action_per_block: ${num_action_per_block}
       num_state_per_block: ${num_state_per_block}
+      max_state_dim: ${max_state_dim}
+      hidden_size: ${hidden_size}
+      action_dim: ${max_action_dim}
+      max_num_embodiments: 64
     text_encoder_cfg:
       _target_: groot.vla.model.dreamzero.modules.wan_video_text_encoder.WanTextEncoder
       _convert_: object

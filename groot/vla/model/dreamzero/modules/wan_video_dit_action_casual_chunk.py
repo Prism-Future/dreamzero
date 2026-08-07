@@ -1362,8 +1362,6 @@ class CausalWanModel(ModelMixin, ConfigMixin):
         self.num_state_per_block = num_state_per_block
         self.concat_first_frame_latent = concat_first_frame_latent
 
-        max_num_embodiments = 1
-
         self.state_encoder = CategorySpecificMLP(
             num_categories=max_num_embodiments,
             input_dim=max_state_dim,

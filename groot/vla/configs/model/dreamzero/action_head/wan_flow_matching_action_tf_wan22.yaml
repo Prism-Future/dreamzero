@@ -33,6 +33,7 @@ action_head_cfg:
       max_state_dim: ${max_state_dim}
       hidden_size: ${hidden_size}
       action_dim: ${max_action_dim}
+      max_num_embodiments: 64
     vae_cfg:
       _target_: groot.vla.model.dreamzero.modules.wan_video_vae.WanVideoVAE38
       _convert_: object
