@@ -109,7 +109,6 @@ torchrun --nproc_per_node $NUM_GPUS --standalone groot/vla/experiment/experiment
     eval_bf16=true \
     dataloader_pin_memory=false \
     dataloader_num_workers=16 \
-    dataloader_prefetch_factor=2 \
     image_resolution_width=320 \
     image_resolution_height=176 \
     save_lora_only=true \
