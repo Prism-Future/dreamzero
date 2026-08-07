@@ -716,12 +716,26 @@ class BaseExperiment(ABC):
                     shard_path = os.path.join(ckpt_dir, shard_file)
                     mprint(f"Loading shard: {shard_path}")
                     shard_state_dict = load_file(shard_path)
-                    model.load_state_dict(shard_state_dict, strict=False)
+                    # Filter out keys with shape mismatch to avoid RuntimeError
+                    model_sd = model.state_dict()
+                    filtered = {k: v for k, v in shard_state_dict.items()
+                                if k not in model_sd or model_sd[k].shape == v.shape}
+                    skipped = set(shard_state_dict.keys()) - set(filtered.keys())
+                    if skipped:
+                        mprint(f"Skipped {len(skipped)} keys with shape mismatch: {sorted(skipped)[:5]}...")
+                    model.load_state_dict(filtered, strict=False)
                     del shard_state_dict
                     gc.collect()
             elif os.path.exists(safetensors_path):
                 state_dict = load_file(safetensors_path)
-                model.load_state_dict(state_dict, strict=False)
+                # Filter out keys with shape mismatch to avoid RuntimeError
+                model_sd = model.state_dict()
+                filtered = {k: v for k, v in state_dict.items()
+                            if k not in model_sd or model_sd[k].shape == v.shape}
+                skipped = set(state_dict.keys()) - set(filtered.keys())
+                if skipped:
+                    mprint(f"Skipped {len(skipped)} keys with shape mismatch: {sorted(skipped)[:5]}...")
+                model.load_state_dict(filtered, strict=False)
             else:
                 raise FileNotFoundError(
                     f"No weights found at '{ckpt_dir}'. "
