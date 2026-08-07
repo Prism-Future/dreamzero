@@ -26,6 +26,8 @@
 export HYDRA_FULL_ERROR=1
 # Disable albumentations version check (server has no internet; avoids startup timeout)
 export NO_ALBUMENTATIONS_UPDATE=1
+# wandb offline mode (server has no internet; logs saved locally, no sync)
+export WANDB_MODE=offline
 
 # ============ HARDCODED PATHS (H200 server, 2x H200) ============
 # Dataset path (stack_cups in LeRobot format: state 14, action 14, videos cam_high/cam_left_wrist/cam_right_wrist)
