@@ -25,27 +25,26 @@
 
 export HYDRA_FULL_ERROR=1
 
-# ============ CHANGE THESE VARIABLES ============
+# ============ HARDCODED PATHS (H200 server, 2x H200) ============
 # Dataset path (stack_cups in LeRobot format: state 14, action 14, videos cam_high/cam_left_wrist/cam_right_wrist)
-STACK_CUPS_DATA_ROOT=${STACK_CUPS_DATA_ROOT:-"/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf_dataset_have_mp4/stack_cups"}
+STACK_CUPS_DATA_ROOT="/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf_dataset_have_mp4/stack_cups"
 
 # Output directory for training checkpoints
-OUTPUT_DIR=${OUTPUT_DIR:-"./checkpoints/dreamzero_stack_cups_lora"}
+OUTPUT_DIR="./checkpoints/dreamzero_stack_cups_lora"
 
-# Number of GPUs to use (default: all visible GPUs)
+# Number of GPUs to use (auto-detect, default 2 for dual-H200)
 if [ -z "${NUM_GPUS}" ]; then
   NUM_GPUS=$(nvidia-smi -L 2>/dev/null | wc -l)
 fi
 NUM_GPUS=${NUM_GPUS:-2}
 
-# Model weight paths (download from HuggingFace if not already present)
-# Base dir for backbone/tokenizer weights (kept alongside the dataset on the shared volume)
-BASE_CKPT_DIR=${BASE_CKPT_DIR:-"/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf_dataset_have_mp4/checkpoints"}
-WAN_CKPT_DIR=${WAN_CKPT_DIR:-"$BASE_CKPT_DIR/Wan2.1-I2V-14B-480P"}
-TOKENIZER_DIR=${TOKENIZER_DIR:-"$BASE_CKPT_DIR/umt5-xxl"}
+# Model weight paths (Wan2.1-I2V-14B-480P + umt5-xxl)
+BASE_CKPT_DIR="/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf_dataset_have_mp4/checkpoints"
+WAN_CKPT_DIR="$BASE_CKPT_DIR/Wan2.1-I2V-14B-480P"
+TOKENIZER_DIR="$BASE_CKPT_DIR/umt5-xxl"
 
 # Pretrained DreamZero-AgiBot checkpoint (for loading LoRA weights before fine-tuning)
-PRETRAINED_MODEL_PATH=${PRETRAINED_MODEL_PATH:-"/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf_dataset_have_mp4/checkpoint_agibot"}
+PRETRAINED_MODEL_PATH="/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf_dataset_have_mp4/checkpoint_agibot"
 # =============================================
 
 # ============ AUTO-DOWNLOAD WEIGHTS ============
