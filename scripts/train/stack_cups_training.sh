@@ -36,7 +36,7 @@ OUTPUT_DIR=${OUTPUT_DIR:-"./checkpoints/dreamzero_stack_cups_lora"}
 if [ -z "${NUM_GPUS}" ]; then
   NUM_GPUS=$(nvidia-smi -L 2>/dev/null | wc -l)
 fi
-NUM_GPUS=${NUM_GPUS:-8}
+NUM_GPUS=${NUM_GPUS:-2}
 
 # Model weight paths (download from HuggingFace if not already present)
 # Base dir for backbone/tokenizer weights (kept alongside the dataset on the shared volume)
@@ -95,13 +95,13 @@ torchrun --nproc_per_node $NUM_GPUS --standalone groot/vla/experiment/experiment
     num_action_per_block=24 \
     num_state_per_block=1 \
     seed=42 \
-    training_args.learning_rate=1e-5 \
+    training_args.learning_rate=1e-4 \
     training_args.deepspeed="groot/vla/configs/deepspeed/zero2.json" \
-    save_steps=10000 \
+    save_steps=5000 \
     training_args.warmup_ratio=0.05 \
     output_dir=$OUTPUT_DIR \
     per_device_train_batch_size=4 \
-    max_steps=100000 \
+    max_steps=50000 \
     weight_decay=1e-5 \
     save_total_limit=10 \
     upload_checkpoints=false \
@@ -109,7 +109,8 @@ torchrun --nproc_per_node $NUM_GPUS --standalone groot/vla/experiment/experiment
     tf32=true \
     eval_bf16=true \
     dataloader_pin_memory=false \
-    dataloader_num_workers=1 \
+    dataloader_num_workers=16 \
+    dataloader_prefetch_factor=2 \
     image_resolution_width=320 \
     image_resolution_height=176 \
     save_lora_only=true \

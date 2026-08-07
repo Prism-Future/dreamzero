@@ -35,7 +35,7 @@ OUTPUT_DIR=${OUTPUT_DIR:-"./checkpoints/dreamzero_stack_cups_wan22_lora"}
 if [ -z "${NUM_GPUS}" ]; then
   NUM_GPUS=$(nvidia-smi -L 2>/dev/null | wc -l)
 fi
-NUM_GPUS=${NUM_GPUS:-4}
+NUM_GPUS=${NUM_GPUS:-2}
 
 # Base dir for backbone/tokenizer weights (kept alongside the dataset on the shared volume)
 BASE_CKPT_DIR=${BASE_CKPT_DIR:-"/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf_dataset_have_mp4/checkpoints"}
@@ -96,13 +96,13 @@ torchrun --nproc_per_node $NUM_GPUS --standalone groot/vla/experiment/experiment
     num_action_per_block=24 \
     num_state_per_block=1 \
     seed=42 \
-    training_args.learning_rate=1e-5 \
+    training_args.learning_rate=1e-4 \
     training_args.deepspeed="groot/vla/configs/deepspeed/zero2.json" \
-    save_steps=500 \
+    save_steps=2000 \
     training_args.warmup_ratio=0.05 \
     output_dir=$OUTPUT_DIR \
-    per_device_train_batch_size=1 \
-    max_steps=100000 \
+    per_device_train_batch_size=4 \
+    max_steps=50000 \
     weight_decay=1e-5 \
     save_total_limit=10 \
     upload_checkpoints=false \
@@ -110,7 +110,8 @@ torchrun --nproc_per_node $NUM_GPUS --standalone groot/vla/experiment/experiment
     tf32=true \
     eval_bf16=true \
     dataloader_pin_memory=false \
-    dataloader_num_workers=1 \
+    dataloader_num_workers=16 \
+    dataloader_prefetch_factor=2 \
     save_lora_only=true \
     max_chunk_size=4 \
     save_strategy=steps \
