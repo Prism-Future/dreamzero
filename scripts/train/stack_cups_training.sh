@@ -29,18 +29,18 @@ export NO_ALBUMENTATIONS_UPDATE=1
 # wandb offline mode (server has no internet; logs saved locally, no sync)
 export WANDB_MODE=offline
 
-# ============ HARDCODED PATHS (H200 server, 8x H200, 160 CPU cores) ============
+# ============ HARDCODED PATHS (H200 server, 2x H200, 40 CPU cores) ============
 # Dataset path (stack_cups in LeRobot format: state 14, action 14, videos cam_high/cam_left_wrist/cam_right_wrist)
 STACK_CUPS_DATA_ROOT="/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf_dataset_have_mp4/stack_cups"
 
 # Output directory for training checkpoints
 OUTPUT_DIR="./checkpoints/dreamzero_stack_cups_lora"
 
-# Number of GPUs to use (auto-detect, default 8 for 8x H200)
+# Number of GPUs to use (auto-detect, default 2 for 2x H200)
 if [ -z "${NUM_GPUS}" ]; then
   NUM_GPUS=$(nvidia-smi -L 2>/dev/null | wc -l)
 fi
-NUM_GPUS=${NUM_GPUS:-8}
+NUM_GPUS=${NUM_GPUS:-2}
 
 # Model weight paths (Wan2.1-I2V-14B-480P + umt5-xxl)
 BASE_CKPT_DIR="/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf_dataset_have_mp4/checkpoints"
@@ -104,7 +104,7 @@ torchrun --nproc_per_node $NUM_GPUS --standalone groot/vla/experiment/experiment
     training_args.warmup_ratio=0.05 \
     output_dir=$OUTPUT_DIR \
     per_device_train_batch_size=1 \
-    gradient_accumulation_steps=1 \
+    gradient_accumulation_steps=4 \
     max_steps=50000 \
     weight_decay=1e-5 \
     save_total_limit=10 \
@@ -113,7 +113,7 @@ torchrun --nproc_per_node $NUM_GPUS --standalone groot/vla/experiment/experiment
     tf32=true \
     eval_bf16=true \
     dataloader_pin_memory=false \
-    dataloader_num_workers=4 \
+    dataloader_num_workers=2 \
     image_resolution_width=320 \
     image_resolution_height=176 \
     save_lora_only=true \
