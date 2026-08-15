@@ -70,7 +70,7 @@ WAN_CKPT_DIR=${WAN_CKPT_DIR:-"$BASE_CKPT_DIR/Wan2.1-I2V-14B-480P"}
 TOKENIZER_DIR=${TOKENIZER_DIR:-"$BASE_CKPT_DIR/umt5-xxl"}
 
 # Pretrained DreamZero-AgiBot checkpoint (for loading LoRA weights before fine-tuning)
-PRETRAINED_MODEL_PATH=${PRETRAINED_MODEL_PATH:-"/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf_dataset_have_mp4/checkpoint_agibot"}
+PRETRAINED_MODEL_PATH=${PRETRAINED_MODEL_PATH:-"/inspire/qb-ilm/project/robot-reasoning/public/d0-model/DreamZero-AgiBot"}
 # =============================================
 
 # ============ AUTO-DOWNLOAD WEIGHTS ============
