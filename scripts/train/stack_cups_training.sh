@@ -64,10 +64,9 @@ GRAD_ACCUM=${GRAD_ACCUM:-2}
 # DataLoader workers (raise if the machine has plenty of RAM; lower to 1 if workers get OOM-killed)
 DATALOADER_WORKERS=${DATALOADER_WORKERS:-2}
 
-# Model weight paths (Wan2.1-I2V-14B-480P + umt5-xxl)
-BASE_CKPT_DIR=${BASE_CKPT_DIR:-"/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf_dataset_have_mp4/checkpoints"}
-WAN_CKPT_DIR=${WAN_CKPT_DIR:-"$BASE_CKPT_DIR/Wan2.1-I2V-14B-480P"}
-TOKENIZER_DIR=${TOKENIZER_DIR:-"$BASE_CKPT_DIR/umt5-xxl"}
+# Model weight paths (Wan2.1-I2V-14B-480P + umt5-xxl; shared FS, downloaded via ModelScope)
+WAN_CKPT_DIR=${WAN_CKPT_DIR:-"/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf/Models/Wan2.1-I2V-14B-480P"}
+TOKENIZER_DIR=${TOKENIZER_DIR:-"/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf/Models/umt5-xxl"}
 
 # Pretrained DreamZero-AgiBot checkpoint (for loading LoRA weights before fine-tuning)
 PRETRAINED_MODEL_PATH=${PRETRAINED_MODEL_PATH:-"/inspire/qb-ilm/project/robot-reasoning/public/d0-model/DreamZero-AgiBot"}
