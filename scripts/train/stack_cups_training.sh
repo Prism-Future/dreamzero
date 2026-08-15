@@ -1,40 +1,54 @@
 #!/bin/bash
-# DreamZero stack_cups Training Script
+# DreamZero stack_cups-embodiment Training Script (Wan2.1-I2V-14B-480P + DreamZero-AgiBot pretrained base)
+#
+# Serves any dataset registered under the `stack_cups` embodiment
+# (state 14, action 14, 3 views: cam_high/cam_left_wrist/cam_right_wrist),
+# including the youcheng_demo3 dataset. Raw youcheng data is ALOHA-style HDF5
+# (observations/images/{main,left,right}, qpos/action 14-dim) with a root that
+# contains success/ and fail/ subdirectories. Convert it with
+# scripts/data/convert_youcheng_hdf5_to_lerobot.py, which renames the cameras
+# main/left/right -> cam_high/cam_left_wrist/cam_right_wrist so the dataset
+# matches this embodiment.
 #
 # Usage:
-#   # Set your dataset path and output directory, then run:
-#   bash scripts/train/stack_cups_training.sh
+#   bash scripts/train/stack_cups_training.sh                    # defaults below
+#   STACK_CUPS_DATA_ROOT=... PRETRAINED_MODEL_PATH=... NUM_GPUS=4 \
+#       bash scripts/train/stack_cups_training.sh
 #
-# Prerequisites:
-#   - stack_cups dataset in LeRobot v2 format at STACK_CUPS_DATA_ROOT
-#     (state 14, action 14, 3 views: cam_high, cam_left_wrist, cam_right_wrist)
-#     Must first generate GEAR metadata with:
-#       python scripts/data/convert_lerobot_to_gear.py \
-#           --dataset-path $STACK_CUPS_DATA_ROOT \
-#           --embodiment-tag stack_cups \
-#           --state-keys '{"left_arm_joint_pos": [0, 6], "left_gripper_pos": [6, 7], "right_arm_joint_pos": [7, 13], "right_gripper_pos": [13, 14]}' \
-#           --action-keys '{"left_arm_joint_pos": [0, 6], "left_gripper_pos": [6, 7], "right_arm_joint_pos": [7, 13], "right_gripper_pos": [13, 14]}' \
-#           --relative-action-keys left_arm_joint_pos left_gripper_pos right_arm_joint_pos right_gripper_pos \
-#           --task-key task_index \
-#           --video-key-style short
-#   - Wan2.1-I2V-14B-480P weights (auto-downloaded or pre-downloaded from HuggingFace)
-#   - umt5-xxl tokenizer (auto-downloaded or pre-downloaded from HuggingFace)
-#   - DreamZero-AgiBot pretrained checkpoint (for loading LoRA weights before fine-tuning)
-#     Already downloaded to /inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf_dataset_have_mp4/checkpoint_agibot
-#     (override via PRETRAINED_MODEL_PATH)
+# Data prep (run BEFORE training):
+#   1) Convert raw HDF5 episodes to LeRobot v2. Point --hdf5-root at the dataset root
+#      (with success/ and fail/ subdirs); only success/ is converted unless
+#      --include-fail is passed:
+#        python scripts/data/convert_youcheng_hdf5_to_lerobot.py \
+#            --hdf5-root $YOUCHENG_RAW_ROOT \
+#            --output $STACK_CUPS_DATA_ROOT \
+#            --task "stack the cups"
+#   2) Generate GEAR metadata:
+#        python scripts/data/convert_lerobot_to_gear.py \
+#            --dataset-path $STACK_CUPS_DATA_ROOT \
+#            --embodiment-tag stack_cups \
+#            --state-keys '{"left_arm_joint_pos": [0, 6], "left_gripper_pos": [6, 7], "right_arm_joint_pos": [7, 13], "right_gripper_pos": [13, 14]}' \
+#            --action-keys '{"left_arm_joint_pos": [0, 6], "left_gripper_pos": [6, 7], "right_arm_joint_pos": [7, 13], "right_gripper_pos": [13, 14]}' \
+#            --relative-action-keys left_arm_joint_pos left_gripper_pos right_arm_joint_pos right_gripper_pos \
+#            --task-key annotation.task_index \
+#            --video-key-style short
+#
+# Model:
+#   - Wan2.1-I2V-14B-480P backbone + umt5-xxl text encoder + Wan2.1 CLIP
+#   - DreamZero-AgiBot pretrained checkpoint as LoRA base
 
 export HYDRA_FULL_ERROR=1
 # Disable albumentations version check (server has no internet; avoids startup timeout)
 export NO_ALBUMENTATIONS_UPDATE=1
-# wandb offline mode (server has no internet; logs saved locally, no sync)
-export WANDB_MODE=offline
+# wandb offline mode (server has no internet; logs saved locally, no sync); override via WANDB_MODE
+export WANDB_MODE=${WANDB_MODE:-offline}
 
-# ============ HARDCODED PATHS (H200 server, 4x H200, 40 CPU cores) ============
-# Dataset path (stack_cups in LeRobot format: state 14, action 14, videos cam_high/cam_left_wrist/cam_right_wrist)
-STACK_CUPS_DATA_ROOT="/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf_dataset_have_mp4/stack_cups"
+# ============ USER CONFIGURATION (override via env; defaults = shared H200 server paths) ============
+# LeRobot v2 dataset (stack_cups embodiment) — your youcheng_demo3 dataset after conversion
+STACK_CUPS_DATA_ROOT=${STACK_CUPS_DATA_ROOT:-"/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf_dataset_have_mp4/stack_cups"}
 
 # Output directory for training checkpoints
-OUTPUT_DIR="./checkpoints/dreamzero_stack_cups_lora"
+OUTPUT_DIR=${OUTPUT_DIR:-"./checkpoints/dreamzero_stack_cups_lora"}
 
 # Number of GPUs to use (auto-detect, default 4 for 4x H200)
 if [ -z "${NUM_GPUS}" ]; then
@@ -42,13 +56,21 @@ if [ -z "${NUM_GPUS}" ]; then
 fi
 NUM_GPUS=${NUM_GPUS:-4}
 
+# Per-GPU batch size (keep 1) and gradient accumulation
+# (effective batch = NUM_GPUS * PER_DEVICE_BATCH_SIZE * GRAD_ACCUM)
+PER_DEVICE_BATCH_SIZE=${PER_DEVICE_BATCH_SIZE:-1}
+GRAD_ACCUM=${GRAD_ACCUM:-2}
+
+# DataLoader workers (raise if the machine has plenty of RAM; lower to 1 if workers get OOM-killed)
+DATALOADER_WORKERS=${DATALOADER_WORKERS:-2}
+
 # Model weight paths (Wan2.1-I2V-14B-480P + umt5-xxl)
-BASE_CKPT_DIR="/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf_dataset_have_mp4/checkpoints"
-WAN_CKPT_DIR="$BASE_CKPT_DIR/Wan2.1-I2V-14B-480P"
-TOKENIZER_DIR="$BASE_CKPT_DIR/umt5-xxl"
+BASE_CKPT_DIR=${BASE_CKPT_DIR:-"/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf_dataset_have_mp4/checkpoints"}
+WAN_CKPT_DIR=${WAN_CKPT_DIR:-"$BASE_CKPT_DIR/Wan2.1-I2V-14B-480P"}
+TOKENIZER_DIR=${TOKENIZER_DIR:-"$BASE_CKPT_DIR/umt5-xxl"}
 
 # Pretrained DreamZero-AgiBot checkpoint (for loading LoRA weights before fine-tuning)
-PRETRAINED_MODEL_PATH="/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf_dataset_have_mp4/checkpoint_agibot"
+PRETRAINED_MODEL_PATH=${PRETRAINED_MODEL_PATH:-"/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf_dataset_have_mp4/checkpoint_agibot"}
 # =============================================
 
 # ============ AUTO-DOWNLOAD WEIGHTS ============
@@ -83,6 +105,14 @@ if [ ! -f "$PRETRAINED_MODEL_PATH/model.safetensors.index.json" ]; then
     exit 1
 fi
 
+echo "========== Training config =========="
+echo "  GPUs: $NUM_GPUS | per-device batch: $PER_DEVICE_BATCH_SIZE | grad accum: $GRAD_ACCUM"
+echo "  Effective batch: $((NUM_GPUS * PER_DEVICE_BATCH_SIZE * GRAD_ACCUM))"
+echo "  Dataloader workers: $DATALOADER_WORKERS"
+echo "  Dataset: $STACK_CUPS_DATA_ROOT"
+echo "  Pretrained base: $PRETRAINED_MODEL_PATH"
+echo "======================================"
+
 torchrun --nproc_per_node $NUM_GPUS --standalone groot/vla/experiment/experiment.py \
     report_to=wandb \
     data=dreamzero/stack_cups_relative \
@@ -103,8 +133,8 @@ torchrun --nproc_per_node $NUM_GPUS --standalone groot/vla/experiment/experiment
     save_steps=100 \
     training_args.warmup_ratio=0.05 \
     output_dir=$OUTPUT_DIR \
-    per_device_train_batch_size=1 \
-    gradient_accumulation_steps=2 \
+    per_device_train_batch_size=$PER_DEVICE_BATCH_SIZE \
+    gradient_accumulation_steps=$GRAD_ACCUM \
     max_steps=50000 \
     weight_decay=1e-5 \
     save_total_limit=10 \
@@ -113,7 +143,7 @@ torchrun --nproc_per_node $NUM_GPUS --standalone groot/vla/experiment/experiment
     tf32=true \
     eval_bf16=true \
     dataloader_pin_memory=false \
-    dataloader_num_workers=1 \
+    dataloader_num_workers=$DATALOADER_WORKERS \
     image_resolution_width=320 \
     image_resolution_height=176 \
     save_lora_only=true \

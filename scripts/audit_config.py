@@ -11,11 +11,11 @@ from omegaconf import OmegaConf
 
 
 def audit_config():
-    config_name = "experiment"
+    config_name = "conf"
     overrides = [
-        "data=dreamzero/stack_cups_relative_wan22",
+        "data=dreamzero/stack_cups_relative",
         "model=dreamzero/vla",
-        "model/dreamzero/action_head=wan_flow_matching_action_tf_wan22",
+        "model/dreamzero/action_head=wan_flow_matching_action_tf",
         "model/dreamzero/transform=dreamzero_cotrain",
         "train_architecture=lora",
         "num_frames=33",
@@ -31,6 +31,7 @@ def audit_config():
         "image_encoder_pretrained_path=/tmp/dummy",
         "vae_pretrained_path=/tmp/dummy",
         "tokenizer_path=/tmp/dummy",
+        "pretrained_model_path=/tmp/dummy",
     ]
 
     try:

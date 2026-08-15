@@ -92,9 +92,6 @@ dev = [
     "isort>=5.12.0",
 ]
 
-[project.scripts]
-dreamzero-server = "socket_test_optimized_AR:main"
-
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["groot*"]
