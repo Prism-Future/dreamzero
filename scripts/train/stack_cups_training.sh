@@ -75,10 +75,15 @@ PRETRAINED_MODEL_PATH=${PRETRAINED_MODEL_PATH:-"/inspire/qb-ilm/project/robot-re
 MAX_STEPS=${MAX_STEPS:-50000}
 
 # Checkpoint save interval in steps (larger = less I/O overhead, faster wall time)
-SAVE_STEPS=${SAVE_STEPS:-100}
+SAVE_STEPS=${SAVE_STEPS:-500}
 
 # How often (in steps) training loss is printed to the log (default = transformers 500)
-LOGGING_STEPS=${LOGGING_STEPS:-500}
+LOGGING_STEPS=${LOGGING_STEPS:-100}
+
+# Milestone checkpoints to keep for later comparison (comma-separated steps).
+# They are backed up to $MILESTONES_DIR before save_total_limit rotates old ones.
+MILESTONE_STEPS=${MILESTONE_STEPS:-"5000,10000,15000,20000,25000,30000,35000,40000,45000,50000"}
+MILESTONES_DIR=${MILESTONES_DIR:-"$OUTPUT_DIR/../milestones"}
 # =============================================
 
 # ============ AUTO-DOWNLOAD WEIGHTS ============
@@ -117,6 +122,8 @@ echo "========== Training config =========="
 echo "  GPUs: $NUM_GPUS | per-device batch: $PER_DEVICE_BATCH_SIZE | grad accum: $GRAD_ACCUM"
 echo "  Effective batch: $((NUM_GPUS * PER_DEVICE_BATCH_SIZE * GRAD_ACCUM))"
 echo "  Dataloader workers: $DATALOADER_WORKERS"
+echo "  Max steps: $MAX_STEPS | save every $SAVE_STEPS | log every $LOGGING_STEPS"
+echo "  Milestones: $MILESTONE_STEPS -> $MILESTONES_DIR"
 echo "  Dataset: $STACK_CUPS_DATA_ROOT"
 echo "  Pretrained base: $PRETRAINED_MODEL_PATH"
 echo "======================================"
@@ -140,6 +147,8 @@ torchrun --nproc_per_node $NUM_GPUS --standalone groot/vla/experiment/experiment
     training_args.deepspeed="groot/vla/configs/deepspeed/zero2.json" \
     save_steps=$SAVE_STEPS \
     logging_steps=$LOGGING_STEPS \
+    ++milestone_steps=[$MILESTONE_STEPS] \
+    ++milestones_dir=$MILESTONES_DIR \
     training_args.warmup_ratio=0.05 \
     output_dir=$OUTPUT_DIR \
     per_device_train_batch_size=$PER_DEVICE_BATCH_SIZE \

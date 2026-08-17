@@ -145,6 +145,49 @@ class CheckpointFormatCallback(TrainerCallback):
                 shutil.copy2(wandb_config_src, wandb_config_dst)
 
 
+class MilestoneCheckpointCallback(TrainerCallback):
+    """Back up select milestone checkpoints to a separate directory before
+    save_total_limit rotates (deletes) old ones, so they survive for comparison.
+
+    Milestones are copied OUTSIDE the trainer's output_dir (a sibling
+    'milestones' dir by default), so rotation never deletes them.
+    """
+
+    def __init__(self, milestones_dir: str | Path, milestone_steps: list[int]):
+        self.milestones_dir = Path(milestones_dir)
+        self.milestone_steps = {int(s) for s in milestone_steps}
+
+    def _backup(self, src: Path, dst: Path) -> None:
+        if dst.exists() or not src.exists():
+            return
+        print(f"[milestone] backing up {src} -> {dst}", flush=True)
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            # Hardlink copy: instant and near-zero disk. Fall back to a full copy
+            # if the filesystem does not support hard links (e.g. some network mounts).
+            shutil.copytree(src, dst, copy_function=os.link, dirs_exist_ok=True)
+        except OSError:
+            if dst.exists():
+                shutil.rmtree(dst)
+            shutil.copytree(src, dst, dirs_exist_ok=True)
+
+    def on_save(self, args, state, control, **kwargs):
+        if not state.is_world_process_zero or state.global_step not in self.milestone_steps:
+            return
+        self._backup(
+            Path(args.output_dir) / f"checkpoint-{state.global_step}",
+            self.milestones_dir / f"checkpoint-{state.global_step}",
+        )
+
+    def on_train_start(self, args, state, control, **kwargs):
+        # Back up milestones that already exist (e.g. after resume_from_checkpoint).
+        if not state.is_world_process_zero:
+            return
+        out = Path(args.output_dir)
+        for step in self.milestone_steps:
+            self._backup(out / f"checkpoint-{step}", self.milestones_dir / f"checkpoint-{step}")
+
+
 class ProfCallback(transformers.TrainerCallback):
     """Callback to manage PyTorch profiler during training.
 
@@ -821,6 +864,25 @@ class BaseExperiment(ABC):
         run_name = cfg.training_args.get("run_name", None)
         ckpt_format_callback = CheckpointFormatCallback(run_name=run_name, exp_cfg_dir=exp_cfg_dir)
         trainer.add_callback(ckpt_format_callback)
+
+        # Back up select milestone checkpoints (e.g. every 5000 steps) for later
+        # comparison, before save_total_limit rotates old checkpoints away.
+        milestone_steps = cfg.get("milestone_steps", None)
+        if milestone_steps:
+            milestones_dir = cfg.get(
+                "milestones_dir",
+                str(Path(training_args.output_dir).parent / "milestones"),
+            )
+            trainer.add_callback(
+                MilestoneCheckpointCallback(
+                    milestones_dir=milestones_dir,
+                    milestone_steps=list(milestone_steps),
+                )
+            )
+            mprint(
+                f"Milestone checkpoints backed up to {milestones_dir}: {list(milestone_steps)}",
+                flush=True,
+            )
 
         loss_log_path = str(Path(training_args.output_dir) / "loss_log.jsonl")
         trainer.add_callback(LossLoggerCallback(output_path=loss_log_path))
