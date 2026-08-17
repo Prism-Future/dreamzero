@@ -1104,6 +1104,18 @@ class LeRobotSingleDataset(Dataset):
             original_key = self.lerobot_modality_meta.video[new_key].original_key
             if original_key is None:
                 original_key = new_key
+            # modality.json may store the full LeRobot column (observation.images.<cam>)
+            # or a bare short key (--video-key-style short); info.json features always
+            # use the full key, so fall back to it when the short lookup misses.
+            if original_key not in le_info["features"]:
+                for candidate in (
+                    f"observation.images.{original_key}",
+                    new_key,
+                    f"observation.images.{new_key}",
+                ):
+                    if candidate in le_info["features"]:
+                        original_key = candidate
+                        break
             le_video_meta = le_info["features"][original_key]
             # Resolve height/width/channel from shape+names (LeRobot v1) or fallback to video_info/info (v2)
             shape_available = "shape" in le_video_meta and "names" in le_video_meta
