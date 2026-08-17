@@ -70,6 +70,9 @@ TOKENIZER_DIR=${TOKENIZER_DIR:-"/inspire/qb-ilm/project/robot-reasoning/public/d
 
 # Pretrained DreamZero-AgiBot checkpoint (for loading LoRA weights before fine-tuning)
 PRETRAINED_MODEL_PATH=${PRETRAINED_MODEL_PATH:-"/inspire/qb-ilm/project/robot-reasoning/public/d0-model/DreamZero-AgiBot"}
+
+# Max training steps (set small, e.g. 50, for a smoke test)
+MAX_STEPS=${MAX_STEPS:-50000}
 # =============================================
 
 # ============ AUTO-DOWNLOAD WEIGHTS ============
@@ -134,7 +137,7 @@ torchrun --nproc_per_node $NUM_GPUS --standalone groot/vla/experiment/experiment
     output_dir=$OUTPUT_DIR \
     per_device_train_batch_size=$PER_DEVICE_BATCH_SIZE \
     gradient_accumulation_steps=$GRAD_ACCUM \
-    max_steps=50000 \
+    max_steps=$MAX_STEPS \
     weight_decay=1e-5 \
     save_total_limit=10 \
     upload_checkpoints=false \
