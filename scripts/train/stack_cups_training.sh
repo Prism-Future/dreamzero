@@ -76,6 +76,9 @@ MAX_STEPS=${MAX_STEPS:-50000}
 
 # Checkpoint save interval in steps (larger = less I/O overhead, faster wall time)
 SAVE_STEPS=${SAVE_STEPS:-100}
+
+# How often (in steps) training loss is printed to the log (default = transformers 500)
+LOGGING_STEPS=${LOGGING_STEPS:-500}
 # =============================================
 
 # ============ AUTO-DOWNLOAD WEIGHTS ============
@@ -136,6 +139,7 @@ torchrun --nproc_per_node $NUM_GPUS --standalone groot/vla/experiment/experiment
     training_args.learning_rate=1e-5 \
     training_args.deepspeed="groot/vla/configs/deepspeed/zero2.json" \
     save_steps=$SAVE_STEPS \
+    logging_steps=$LOGGING_STEPS \
     training_args.warmup_ratio=0.05 \
     output_dir=$OUTPUT_DIR \
     per_device_train_batch_size=$PER_DEVICE_BATCH_SIZE \
