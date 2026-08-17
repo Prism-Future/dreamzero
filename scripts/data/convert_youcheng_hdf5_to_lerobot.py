@@ -118,6 +118,24 @@ def read_fps(f: h5py.File, fallback: float) -> float:
     return fallback
 
 
+def parse_scale(raw: str | None) -> tuple[int, int] | None:
+    """Parse 'WxH' (e.g. '320x240') into (width, height); None if empty."""
+    if not raw:
+        return None
+    w, h = raw.lower().split("x")
+    return int(w), int(h)
+
+
+def resize_frames(frames: np.ndarray, scale: tuple[int, int]) -> np.ndarray:
+    """Resize a (T, H, W, 3) uint8 array to (T, new_h, new_w, 3)."""
+    import cv2
+    w, h = scale
+    out = np.empty((frames.shape[0], h, w, 3), dtype=frames.dtype)
+    for i in range(frames.shape[0]):
+        out[i] = cv2.resize(frames[i], (w, h), interpolation=cv2.INTER_AREA)
+    return out
+
+
 def write_video(frames: np.ndarray, path: Path, fps: float) -> None:
     """Write a (T, H, W, 3) uint8 array as H.264 mp4."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -129,7 +147,8 @@ def write_video(frames: np.ndarray, path: Path, fps: float) -> None:
 
 def write_episode(hdf5_path: Path, episode_index: int, out_root: Path,
                   camera_map: dict[str, str], fps: float,
-                  task_index: int) -> int:
+                  task_index: int,
+                  video_scale: tuple[int, int] | None = None) -> int:
     chunk_idx = episode_index // CHUNK_SIZE
     ep_str = f"episode_{episode_index:06d}"
 
@@ -148,9 +167,11 @@ def write_episode(hdf5_path: Path, episode_index: int, out_root: Path,
                 print(f"[warn] camera '{src}' missing in {hdf5_path.name}, skipping")
                 continue
             frames = np.asarray(images_root[src][:])  # (T, H, W, 3) uint8
+            if video_scale is not None:
+                frames = resize_frames(frames, video_scale)
             video_path = out_root / "videos" / f"chunk-{chunk_idx:03d}" / dst / f"{ep_str}.mp4"
             write_video(frames, video_path, fps)
-            print(f"  {hdf5_path.name}: {src} -> {video_path} ({frames.shape[0]} frames)")
+            print(f"  {hdf5_path.name}: {src} -> {video_path} ({frames.shape[0]} frames, {frames.shape[2]}x{frames.shape[1]})")
 
         # --- parquet (low-dim) ---
         n = len(qpos)
@@ -237,6 +258,10 @@ def main() -> None:
                              "failed demos are not used for imitation learning).")
     parser.add_argument("--fps", type=float, default=None,
                         help="Override frame rate (default: read from hdf5 control_hz, else 30).")
+    parser.add_argument("--video-scale", type=str, default="",
+                        help="Resize videos to WxH before encoding (e.g. '320x240', half of the "
+                             "native 640x480, ~4x faster decode at train time). "
+                             "Default: keep native resolution.")
     args = parser.parse_args()
 
     if not args.hdf5_root.is_dir():
@@ -261,9 +286,14 @@ def main() -> None:
           f"fps={fps}, task='{args.task}'")
     print(f"Camera mapping: {camera_map}")
 
+    video_scale = parse_scale(args.video_scale)
+    if video_scale is not None:
+        print(f"Video resize: native -> {video_scale[0]}x{video_scale[1]}")
+
     episodes = []
     for idx, (h5, outcome) in enumerate(episode_files):
-        length = write_episode(h5, idx, args.output, camera_map, fps, task_index=0)
+        length = write_episode(h5, idx, args.output, camera_map, fps, task_index=0,
+                               video_scale=video_scale)
         episodes.append({"episode_index": idx, "tasks": [args.task], "length": length,
                          "outcome": outcome})
 
