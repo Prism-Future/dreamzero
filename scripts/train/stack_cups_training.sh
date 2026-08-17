@@ -44,8 +44,8 @@ export NO_ALBUMENTATIONS_UPDATE=1
 export WANDB_MODE=${WANDB_MODE:-offline}
 
 # ============ USER CONFIGURATION (override via env; defaults = shared H200 server paths) ============
-# LeRobot v2 dataset (stack_cups embodiment) — your youcheng_demo3 dataset after conversion
-STACK_CUPS_DATA_ROOT=${STACK_CUPS_DATA_ROOT:-"/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf_dataset_have_mp4/stack_cups"}
+# LeRobot v2 dataset (stack_cups embodiment) — youcheng_demo3 after conversion
+STACK_CUPS_DATA_ROOT=${STACK_CUPS_DATA_ROOT:-"/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf/youcheng_demo3_lerobot"}
 
 # Output directory for training checkpoints
 OUTPUT_DIR=${OUTPUT_DIR:-"./checkpoints/dreamzero_stack_cups_lora"}

@@ -45,7 +45,9 @@ training script) without touching any model code.  After this script, run:
         --task-key annotation.task_index \
         --video-key-style short
 
-Usage:
+Usage (defaults point to the shared H200 server's youcheng_demo3; success/ only,
+add --include-fail to also convert fail/):
+    python scripts/data/convert_youcheng_hdf5_to_lerobot.py
     python scripts/data/convert_youcheng_hdf5_to_lerobot.py \
         --hdf5-root /path/to/youcheng_demo3 \
         --output /path/to/youcheng_demo3_lerobot \
@@ -214,12 +216,16 @@ def write_meta(out_root: Path, episodes: list[dict], task: str,
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--hdf5-root", type=Path, required=True,
+    parser.add_argument("--hdf5-root", type=Path,
+                        default=Path("/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf/youcheng_demo3"),
                         help="Root directory of raw episodes. Accepts either a flat dir of "
                              "*.hdf5/*.h5 files or a dir with success/ (and optionally fail/) "
-                             "subdirectories, e.g. .../youcheng_demo3.")
-    parser.add_argument("--output", "-o", type=Path, required=True,
-                        help="Output LeRobot v2 dataset directory.")
+                             "subdirectories, e.g. .../youcheng_demo3. "
+                             "(default: shared H200 server's youcheng_demo3)")
+    parser.add_argument("--output", "-o", type=Path,
+                        default=Path("/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf/youcheng_demo3_lerobot"),
+                        help="Output LeRobot v2 dataset directory "
+                             "(default: .../zyf/youcheng_demo3_lerobot).")
     parser.add_argument("--task", type=str, default=DEFAULT_TASK,
                         help=f"Language instruction shared by all episodes (default: '{DEFAULT_TASK}').")
     parser.add_argument("--camera-map", type=str, default="",
