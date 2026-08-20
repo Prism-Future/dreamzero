@@ -37,6 +37,21 @@
 #   - Wan2.1-I2V-14B-480P backbone + umt5-xxl text encoder + Wan2.1 CLIP
 #   - DreamZero-AgiBot pretrained checkpoint as LoRA base
 
+# ============ VIRTUALENV ============
+# Use the project venv so torchrun/hydra resolve to the venv (the system python
+# at /usr/local/bin lacks hydra). Override with VENV_DIR if the venv lives elsewhere.
+if [ -z "$VIRTUAL_ENV" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    REPO_ROOT="$(dirname "$(dirname "$SCRIPT_DIR")")"
+    if [ -f "$REPO_ROOT/.venv/bin/activate" ]; then
+        source "$REPO_ROOT/.venv/bin/activate"
+        echo "Activated venv: $REPO_ROOT/.venv"
+    else
+        echo "WARNING: no .venv found at $REPO_ROOT/.venv; using system python (may lack hydra)"
+    fi
+fi
+# =====================================
+
 export HYDRA_FULL_ERROR=1
 # Disable albumentations version check (server has no internet; avoids startup timeout)
 export NO_ALBUMENTATIONS_UPDATE=1
