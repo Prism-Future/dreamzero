@@ -87,20 +87,20 @@ TOKENIZER_DIR=${TOKENIZER_DIR:-"/inspire/qb-ilm/project/robot-reasoning/public/d
 PRETRAINED_MODEL_PATH=${PRETRAINED_MODEL_PATH:-"/inspire/qb-ilm/project/robot-reasoning/public/d0-model/DreamZero-AgiBot"}
 
 # Max training steps (set small, e.g. 50, for a smoke test)
-MAX_STEPS=${MAX_STEPS:-50000}
+MAX_STEPS=${MAX_STEPS:-5000}
 
 # Checkpoint save interval in steps (larger = less I/O overhead, faster wall time)
-SAVE_STEPS=${SAVE_STEPS:-500}
+SAVE_STEPS=${SAVE_STEPS:-100}
 
 # Max number of checkpoints kept in the rolling window (oldest auto-deleted)
 SAVE_TOTAL_LIMIT=${SAVE_TOTAL_LIMIT:-5}
 
 # How often (in steps) training loss is printed to the log (default = transformers 500)
-LOGGING_STEPS=${LOGGING_STEPS:-100}
+LOGGING_STEPS=${LOGGING_STEPS:-20}
 
 # Milestone checkpoints to keep for later comparison (comma-separated steps).
 # They are backed up to $MILESTONES_DIR before save_total_limit rotates old ones.
-MILESTONE_STEPS=${MILESTONE_STEPS:-"10000,20000,30000,40000,50000"}
+MILESTONE_STEPS=${MILESTONE_STEPS:-"1000,2000,3000,4000,5000"}
 MILESTONES_DIR=${MILESTONES_DIR:-"/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf/milestone"}
 # =============================================
 
