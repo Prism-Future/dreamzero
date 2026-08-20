@@ -47,8 +47,8 @@ export WANDB_MODE=${WANDB_MODE:-offline}
 # LeRobot v2 dataset (stack_cups embodiment) — youcheng_demo3 after conversion
 STACK_CUPS_DATA_ROOT=${STACK_CUPS_DATA_ROOT:-"/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf/youcheng_demo3_lerobot"}
 
-# Output directory for training checkpoints
-OUTPUT_DIR=${OUTPUT_DIR:-"./checkpoints/dreamzero_stack_cups_lora"}
+# Output directory for training checkpoints (rolling window)
+OUTPUT_DIR=${OUTPUT_DIR:-"/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf/roll_win"}
 
 # Number of GPUs to use (auto-detect, default 4 for 4x H200)
 if [ -z "${NUM_GPUS}" ]; then
@@ -86,7 +86,7 @@ LOGGING_STEPS=${LOGGING_STEPS:-100}
 # Milestone checkpoints to keep for later comparison (comma-separated steps).
 # They are backed up to $MILESTONES_DIR before save_total_limit rotates old ones.
 MILESTONE_STEPS=${MILESTONE_STEPS:-"10000,20000,30000,40000,50000"}
-MILESTONES_DIR=${MILESTONES_DIR:-"$OUTPUT_DIR/../milestones"}
+MILESTONES_DIR=${MILESTONES_DIR:-"/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf/milestone"}
 # =============================================
 
 # ============ AUTO-DOWNLOAD WEIGHTS ============
