@@ -77,12 +77,15 @@ MAX_STEPS=${MAX_STEPS:-50000}
 # Checkpoint save interval in steps (larger = less I/O overhead, faster wall time)
 SAVE_STEPS=${SAVE_STEPS:-500}
 
+# Max number of checkpoints kept in the rolling window (oldest auto-deleted)
+SAVE_TOTAL_LIMIT=${SAVE_TOTAL_LIMIT:-5}
+
 # How often (in steps) training loss is printed to the log (default = transformers 500)
 LOGGING_STEPS=${LOGGING_STEPS:-100}
 
 # Milestone checkpoints to keep for later comparison (comma-separated steps).
 # They are backed up to $MILESTONES_DIR before save_total_limit rotates old ones.
-MILESTONE_STEPS=${MILESTONE_STEPS:-"5000,10000,15000,20000,25000,30000,35000,40000,45000,50000"}
+MILESTONE_STEPS=${MILESTONE_STEPS:-"10000,20000,30000,40000,50000"}
 MILESTONES_DIR=${MILESTONES_DIR:-"$OUTPUT_DIR/../milestones"}
 # =============================================
 
@@ -122,7 +125,7 @@ echo "========== Training config =========="
 echo "  GPUs: $NUM_GPUS | per-device batch: $PER_DEVICE_BATCH_SIZE | grad accum: $GRAD_ACCUM"
 echo "  Effective batch: $((NUM_GPUS * PER_DEVICE_BATCH_SIZE * GRAD_ACCUM))"
 echo "  Dataloader workers: $DATALOADER_WORKERS"
-echo "  Max steps: $MAX_STEPS | save every $SAVE_STEPS | log every $LOGGING_STEPS"
+echo "  Max steps: $MAX_STEPS | save every $SAVE_STEPS | keep $SAVE_TOTAL_LIMIT | log every $LOGGING_STEPS"
 echo "  Milestones: $MILESTONE_STEPS -> $MILESTONES_DIR"
 echo "  Dataset: $STACK_CUPS_DATA_ROOT"
 echo "  Pretrained base: $PRETRAINED_MODEL_PATH"
@@ -155,7 +158,7 @@ torchrun --nproc_per_node $NUM_GPUS --standalone groot/vla/experiment/experiment
     gradient_accumulation_steps=$GRAD_ACCUM \
     max_steps=$MAX_STEPS \
     weight_decay=1e-5 \
-    save_total_limit=10 \
+    save_total_limit=$SAVE_TOTAL_LIMIT \
     upload_checkpoints=false \
     bf16=true \
     tf32=true \
