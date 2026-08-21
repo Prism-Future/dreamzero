@@ -102,10 +102,6 @@ LOGGING_STEPS=${LOGGING_STEPS:-20}
 # They are backed up to $MILESTONES_DIR before save_total_limit rotates old ones.
 MILESTONE_STEPS=${MILESTONE_STEPS:-"1000,2000,3000,4000,5000"}
 MILESTONES_DIR=${MILESTONES_DIR:-"/inspire/qb-ilm/project/robot-reasoning/public/data/lerobot/zyf/milestone"}
-
-# Resume training from a checkpoint (e.g. after being killed). Note: MAX_STEPS is
-# the TOTAL target step count, not the number of additional steps.
-RESUME_FROM=${RESUME_FROM:-""}
 # =============================================
 
 # ============ AUTO-DOWNLOAD WEIGHTS ============
@@ -148,13 +144,7 @@ echo "  Max steps: $MAX_STEPS | save every $SAVE_STEPS | keep $SAVE_TOTAL_LIMIT 
 echo "  Milestones: $MILESTONE_STEPS -> $MILESTONES_DIR"
 echo "  Dataset: $STACK_CUPS_DATA_ROOT"
 echo "  Pretrained base: $PRETRAINED_MODEL_PATH"
-echo "  Resume from: ${RESUME_FROM:-none}"
 echo "======================================"
-
-RESUME_ARGS=()
-if [ -n "$RESUME_FROM" ]; then
-    RESUME_ARGS=(resume_from_checkpoint=$RESUME_FROM)
-fi
 
 torchrun --nproc_per_node $NUM_GPUS --standalone groot/vla/experiment/experiment.py \
     report_to=wandb \
@@ -196,7 +186,6 @@ torchrun --nproc_per_node $NUM_GPUS --standalone groot/vla/experiment/experiment
     max_chunk_size=4 \
     frame_seqlen=880 \
     save_strategy=steps \
-    "${RESUME_ARGS[@]}" \
     stack_cups_data_root=$STACK_CUPS_DATA_ROOT \
     dit_version=$WAN_CKPT_DIR \
     text_encoder_pretrained_path=$WAN_CKPT_DIR/models_t5_umt5-xxl-enc-bf16.pth \
